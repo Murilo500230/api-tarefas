@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS tarefas (
   descricao TEXT,
   status ENUM('Pendente', 'Em andamento', 'Concluída') NOT NULL DEFAULT 'Pendente',
   data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  atualizada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   prazo DATE,
   usuario_id INT NOT NULL,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE

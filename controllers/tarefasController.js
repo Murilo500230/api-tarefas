@@ -7,10 +7,19 @@ async function usuarioExiste(usuarioId) {
   return usuarios.length > 0;
 }
 
-// GET /tarefas -> lista todas as tarefas (aceita ?status= para filtrar)
+const CAMPOS_ORDENACAO_VALIDOS = ['id', 'titulo', 'prazo', 'status', 'data_criacao'];
+
+// GET /tarefas -> lista tarefas, com suporte a:
+//   ?status=Pendente          filtra por status
+//   ?busca=texto              busca no título ou na descrição
+//   ?ordenar=prazo&direcao=asc  ordena pelo campo informado (padrão: id desc)
+//   ?page=1&limit=10          pagina os resultados
 exports.listarTarefas = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, busca, ordenar, direcao, page, limit } = req.query;
+
+    const condicoes = [];
+    const valores = [];
 
     if (status) {
       if (!STATUS_VALIDOS.includes(status)) {
@@ -18,14 +27,60 @@ exports.listarTarefas = async (req, res) => {
           erro: `Status inválido. Use um dos valores: ${STATUS_VALIDOS.join(', ')}`
         });
       }
-      const [tarefas] = await db.query(
-        'SELECT * FROM tarefas WHERE status = ? ORDER BY id DESC',
-        [status]
-      );
-      return res.json(tarefas);
+      condicoes.push('status = ?');
+      valores.push(status);
     }
 
-    const [tarefas] = await db.query('SELECT * FROM tarefas ORDER BY id DESC');
+    if (busca) {
+      condicoes.push('(titulo LIKE ? OR descricao LIKE ?)');
+      valores.push(`%${busca}%`, `%${busca}%`);
+    }
+
+    let campoOrdenacao = 'id';
+    if (ordenar) {
+      if (!CAMPOS_ORDENACAO_VALIDOS.includes(ordenar)) {
+        return res.status(400).json({
+          erro: `Campo de ordenação inválido. Use um dos valores: ${CAMPOS_ORDENACAO_VALIDOS.join(', ')}`
+        });
+      }
+      campoOrdenacao = ordenar;
+    }
+
+    const direcaoOrdenacao = direcao && direcao.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    let sql = 'SELECT * FROM tarefas';
+    if (condicoes.length > 0) {
+      sql += ' WHERE ' + condicoes.join(' AND ');
+    }
+    sql += ` ORDER BY ${campoOrdenacao} ${direcaoOrdenacao}`;
+
+    if (page || limit) {
+      const paginaAtual = Math.max(parseInt(page) || 1, 1);
+      const itensPorPagina = Math.max(parseInt(limit) || 10, 1);
+      const offset = (paginaAtual - 1) * itensPorPagina;
+
+      let sqlContagem = 'SELECT COUNT(*) AS total FROM tarefas';
+      if (condicoes.length > 0) {
+        sqlContagem += ' WHERE ' + condicoes.join(' AND ');
+      }
+      const [[{ total }]] = await db.query(sqlContagem, valores);
+
+      const sqlPaginada = sql + ' LIMIT ? OFFSET ?';
+      const valoresPaginados = [...valores, itensPorPagina, offset];
+      const [tarefas] = await db.query(sqlPaginada, valoresPaginados);
+
+      return res.json({
+        dados: tarefas,
+        paginacao: {
+          pagina_atual: paginaAtual,
+          itens_por_pagina: itensPorPagina,
+          total_itens: total,
+          total_paginas: Math.ceil(total / itensPorPagina)
+        }
+      });
+    }
+
+    const [tarefas] = await db.query(sql, valores);
     res.json(tarefas);
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao buscar tarefas', detalhes: erro.message });
