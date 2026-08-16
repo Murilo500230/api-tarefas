@@ -16,6 +16,10 @@ API REST para gerenciamento de tarefas atribuídas a usuários. Permite cadastra
 - MySQL (via `mysql2`)
 - dotenv
 
+## Pré-requisitos
+- Node.js (versão 18 ou superior)
+- MySQL instalado e rodando localmente
+
 ## Instruções para executar o projeto
 
 1. Instalar as dependências:
