@@ -1,5 +1,7 @@
 # Gerenciador de Tarefas — API REST
 
+API REST para gerenciamento de tarefas atribuídas a usuários, desenvolvida com Node.js, Express e MySQL.
+
 ## Integrantes
 - Cahuan Gomes Gonçalves
 - Darlan de Jesus Malta
@@ -8,48 +10,60 @@
 - Murilo Bastos Ferreira
 
 ## Descrição da API
-API REST para gerenciamento de tarefas atribuídas a usuários. Permite cadastrar usuários, cadastrar tarefas vinculadas a um usuário responsável, consultar, atualizar, remover, alterar o status de uma tarefa (Pendente, Em andamento, Concluída), listar as tarefas de um usuário específico e filtrar tarefas por status.
+Permite cadastrar usuários, cadastrar tarefas vinculadas a um usuário responsável, consultar, atualizar, remover e alterar o status de uma tarefa (Pendente, Em andamento, Concluída). Também é possível listar as tarefas de um usuário específico e filtrar tarefas por status, além de recursos extras de busca, paginação e ordenação.
 
 ## Tecnologias utilizadas
 - Node.js
 - Express
-- MySQL (via `mysql2`)
+- MySQL (via mysql2)
 - dotenv
 
 ## Pré-requisitos
+Antes de começar, é necessário ter instalado na máquina:
 - Node.js (versão 18 ou superior)
-- MySQL instalado e rodando localmente
+- MySQL instalado e em execução localmente
 
-## Instruções para executar o projeto
+---
 
-1. Instalar as dependências:
-   ```bash
-   npm install
-   ```
+## Como executar o projeto (passo a passo)
 
-2. Configurar as variáveis de ambiente — copie `.env.example` para `.env` e ajuste usuário/senha do MySQL:
-   ```bash
-   cp .env.example .env
-   ```
+### 1. Clonar o repositório
+git clone https://github.com/Murilo500230/api-tarefas.git
+cd api-tarefas
 
-3. Rodar o servidor:
-   ```bash
-   npm start
-   ```
-   (ou `npm run dev` para reiniciar automaticamente a cada alteração, usando nodemon)
+### 2. Instalar as dependências
+npm install
 
-   O servidor sobe em `http://localhost:3000`.
+### 3. Configurar as variáveis de ambiente
+Copie o arquivo de exemplo e ajuste com o usuário/senha do seu MySQL:
+cp .env.example .env
 
-## Configuração do banco de dados
+Abra o .env criado e edite os valores conforme o seu ambiente:
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=sua_senha_aqui
+DB_NAME=gerenciador_tarefas_db
+PORT=3000
 
-O script `schema.sql` cria o banco `gerenciador_tarefas_db`, as tabelas `usuarios` e `tarefas` (com relacionamento via `usuario_id`) e insere alguns dados de exemplo.
-
-Para executar:
-```bash
+### 4. Criar o banco de dados
+Execute o script schema.sql no MySQL. Ele cria o banco gerenciador_tarefas_db, as tabelas usuarios e tarefas (já relacionadas) e insere alguns dados de exemplo:
 mysql -u root -p < schema.sql
-```
 
-### Modelo de dados
+### 5. Rodar o servidor
+npm start
+
+Ou, para reiniciar automaticamente a cada alteração (usando nodemon):
+npm run dev
+
+Se tudo deu certo, o terminal deve mostrar:
+Servidor rodando em http://localhost:3000
+
+### 6. Testar a API
+Acesse http://localhost:3000 no navegador — deve aparecer uma mensagem de boas-vindas confirmando que o servidor está no ar. Para testar os demais endpoints (POST, PUT, PATCH, DELETE), utilize uma ferramenta como Postman ou Thunder Client, apontando para http://localhost:3000.
+
+---
+
+## Modelo de dados
 
 **usuarios**
 | Campo | Tipo |
@@ -66,8 +80,11 @@ mysql -u root -p < schema.sql
 | descricao | TEXT |
 | status | ENUM('Pendente', 'Em andamento', 'Concluída') |
 | data_criacao | TIMESTAMP (automático) |
+| atualizada_em | TIMESTAMP (atualizado automaticamente a cada alteração) |
 | prazo | DATE |
-| usuario_id | INT (FK → usuarios.id) |
+| usuario_id | INT (FK → usuarios.id, ON DELETE CASCADE) |
+
+---
 
 ## Principais endpoints
 
@@ -80,20 +97,19 @@ mysql -u root -p < schema.sql
 | GET | /tarefas?status=Pendente | Filtra tarefas por status |
 | GET | /tarefas/:id | Consulta uma tarefa específica |
 | POST | /tarefas | Cadastra uma tarefa |
-| PUT | /tarefas/:id | Atualiza uma tarefa |
+| PUT | /tarefas/:id | Atualiza uma tarefa (todos os campos) |
 | PATCH | /tarefas/:id/status | Altera apenas o status de uma tarefa |
 | DELETE | /tarefas/:id | Remove uma tarefa |
 
-### Exemplo — cadastrar usuário (POST /usuarios)
-```json
+### Exemplo — cadastrar usuário
+POST /usuarios
 {
   "nome": "Murilo Bastos",
   "email": "murilo@exemplo.com"
 }
-```
 
-### Exemplo — cadastrar tarefa (POST /tarefas)
-```json
+### Exemplo — cadastrar tarefa
+POST /tarefas
 {
   "titulo": "Estudar para a prova",
   "descricao": "Revisar o conteúdo de banco de dados",
@@ -101,28 +117,74 @@ mysql -u root -p < schema.sql
   "prazo": "2026-09-01",
   "usuario_id": 1
 }
-```
 
-### Exemplo — alterar status (PATCH /tarefas/1/status)
-```json
+### Exemplo — atualizar tarefa (todos os campos)
+PUT /tarefas/1
+{
+  "titulo": "Estudar para a prova (revisado)",
+  "descricao": "Revisar modelagem e normalização",
+  "status": "Em andamento",
+  "prazo": "2026-09-05",
+  "usuario_id": 1
+}
+
+### Exemplo — alterar apenas o status
+PATCH /tarefas/1/status
 {
   "status": "Concluída"
 }
-```
+
+---
+
+## Recursos extras (desafio adicional)
+
+O endpoint GET /tarefas aceita, de forma combinável, os seguintes parâmetros de consulta:
+
+| Parâmetro | Exemplo | O que faz |
+|---|---|---|
+| status | ?status=Pendente | Filtra pelo status da tarefa |
+| busca | ?busca=prova | Busca o texto no título ou na descrição |
+| ordenar | ?ordenar=prazo | Ordena por id, titulo, prazo, status ou data_criacao |
+| direcao | ?direcao=asc | Direção da ordenação (asc ou desc, padrão desc) |
+| page e limit | ?page=1&limit=10 | Pagina os resultados |
+
+Exemplo combinando tudo:
+GET /tarefas?status=Pendente&busca=prova&ordenar=prazo&direcao=asc&page=1&limit=5
+
+Quando page ou limit são usados, a resposta vem no formato:
+{
+  "dados": [ /* tarefas da página */ ],
+  "paginacao": {
+    "pagina_atual": 1,
+    "itens_por_pagina": 5,
+    "total_itens": 12,
+    "total_paginas": 3
+  }
+}
+
+Também foi adicionado o campo atualizada_em, que registra automaticamente a data/hora da última alteração de cada tarefa.
+
+---
 
 ## Validações implementadas
-- `titulo` e `usuario_id` são obrigatórios ao criar uma tarefa
-- `nome` e `email` são obrigatórios ao criar um usuário, e o e-mail precisa ter formato válido e ser único
-- `status` só aceita os valores `Pendente`, `Em andamento` ou `Concluída`
-- Não é possível criar uma tarefa apontando para um `usuario_id` que não existe
+- titulo e usuario_id são obrigatórios ao criar uma tarefa
+- nome e email são obrigatórios ao criar um usuário, e o e-mail precisa ter formato válido e ser único
+- status só aceita os valores Pendente, Em andamento ou Concluída
+- Não é possível criar ou atualizar uma tarefa apontando para um usuario_id que não existe
 
 ## Tratamento de erros
-- `400` — dados inválidos ou incompletos
-- `404` — tarefa, usuário ou rota não encontrados
-- `500` — erro interno da aplicação
+| Código | Quando ocorre |
+|---|---|
+| 200 | Operação realizada com sucesso |
+| 201 | Registro criado com sucesso |
+| 204 | Registro removido com sucesso (sem conteúdo de resposta) |
+| 400 | Dados inválidos ou incompletos |
+| 404 | Tarefa, usuário ou rota não encontrados |
+| 500 | Erro interno da aplicação |
+
+---
 
 ## Estrutura do projeto
-```
 gerenciador-tarefas-api/
 ├── config/
 │   └── db.js
@@ -135,5 +197,5 @@ gerenciador-tarefas-api/
 ├── schema.sql
 ├── server.js
 ├── package.json
-└── .env.example
-```
+├── .env.example
+└── .gitignore
